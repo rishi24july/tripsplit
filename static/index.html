@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#6C63FF" />
+  <title>TripSplit ✈️</title>
+  <style>
+    /* ── Variables & Reset ──────────────────────────────── */
+    :root {
+      --primary:    #6C63FF;
+      --primary-dk: #574fd6;
+      --accent:     #FF6B6B;
+      --green:      #2ecc71;
+      --red:        #e74c3c;
+      --bg:         #F0F2FF;
+      --card:       #ffffff;
+      --text:       #1a1a2e;
+      --sub:        #6b7280;
+      --border:     #e5e7eb;
+      --shadow:     0 4px 20px rgba(108,99,255,0.12);
+      --radius:     16px;
+      --radius-sm:  10px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      overflow-x: hidden;
+    }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1a1a2e; color: #fff; padding: 12px 20px; border-radius: 50px;
+      font-size: 14px; font-weight: 500; opacity: 0; transition: all .3s;
+      z-index: 9999; white-space: nowrap; pointer-events: none;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ── Screen System ───────────────────────────────────── */
+    .screen { display: none; min-height: 100dvh; flex-direction: column; }
+    .screen.active { display: flex; }
+
+    /* ── HOME SCREEN ─────────────────────────────────────── */
+    #screen-home {
+      background: linear-gradient(160deg, #6C63FF 0%, #8B5CF6 50%, #F0F2FF 50%);
+    }
+    .hero {
+      padding: 60px 24px 40px;
+      text-align: center;
+      color: white;
+    }
+    .hero-logo { font-size: 64px; margin-bottom: 8px; }
+    .hero h1  { font-size: 32px; font-weight: 800; letter-spacing: -1px; }
+    .hero p   { font-size: 15px; opacity: .85; margin-top: 6px; }
+
+    .home-body { flex: 1; padding: 0 20px 40px; }
+
+    .home-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 16px;
+      transition: transform .15s;
+    }
+    .home-card:active { transform: scale(.98); }
+    .home-card-icon { font-size: 36px; }
+    .home-card-text h3 { font-size: 17px; font-weight: 700; }
+    .home-card-text p  { font-size: 13px; color: var(--sub); margin-top: 2px; }
+    .home-card .chevron { margin-left: auto; font-size: 22px; color: var(--primary); }
+
+    .divider {
+      text-align: center; color: var(--sub); font-size: 13px; font-weight: 600;
+      margin: 4px 0 16px; letter-spacing: 1px;
+    }
+
+    .join-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    .join-card label { font-size: 13px; font-weight: 600; color: var(--sub); display: block; margin-bottom: 8px; }
+
+    /* ── Inputs & Buttons ─────────────────────────────────── */
+    input, select, textarea {
+      width: 100%; padding: 14px 16px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 16px; background: #fafafa;
+      color: var(--text); outline: none; transition: border-color .2s;
+      -webkit-appearance: none; appearance: none;
+    }
+    input:focus, select:focus { border-color: var(--primary); background: #fff; }
+    input::placeholder { color: #bbb; }
+
+    .btn {
+      width: 100%; padding: 15px; border: none; border-radius: var(--radius-sm);
+      font-size: 16px; font-weight: 700; cursor: pointer; transition: all .15s;
+      margin-top: 12px;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dk); }
+    .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); margin-top: 8px; }
+    .btn-danger  { background: var(--red); color: white; }
+    .btn-sm {
+      padding: 8px 14px; font-size: 13px; font-weight: 600;
+      border-radius: 8px; border: none; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-sm:active { transform: scale(.95); }
+
+    /* ── NAME ENTRY SCREEN ────────────────────────────────── */
+    .top-bar {
+      background: var(--primary);
+      color: white;
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px;
+      padding-top: calc(16px + env(safe-area-inset-top));
+    }
+    .top-bar h2 { font-size: 18px; font-weight: 700; }
+    .back-btn {
+      background: rgba(255,255,255,.2); border: none; color: white;
+      width: 36px; height: 36px; border-radius: 10px; font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+
+    .screen-body { flex: 1; padding: 20px; overflow-y: auto; }
+
+    .info-card {
+      background: linear-gradient(135deg, var(--primary), #8B5CF6);
+      border-radius: var(--radius); padding: 24px; text-align: center;
+      color: white; margin-bottom: 20px;
+    }
+    .info-card .emoji { font-size: 48px; margin-bottom: 8px; }
+    .info-card h3 { font-size: 22px; font-weight: 800; }
+    .info-card .code-pill {
+      display: inline-block; background: rgba(255,255,255,.25);
+      border-radius: 50px; padding: 4px 14px; font-size: 13px;
+      font-weight: 700; margin-top: 8px; letter-spacing: 2px;
+    }
+
+    .form-card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .form-label { font-size: 13px; font-weight: 600; color: var(--sub); margin-bottom: 8px; display: block; }
+
+    /* ── GROUP SCREEN ─────────────────────────────────────── */
+    .group-topbar {
+      background: var(--primary);
+      color: white;
+      padding: 16px 16px 0;
+      padding-top: calc(16px + env(safe-area-inset-top));
+    }
+    .group-topbar-row {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+    }
+    .group-topbar h2 { font-size: 18px; font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .topbar-btn {
+      background: rgba(255,255,255,.2); border: none; color: white;
+      padding: 8px 12px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+    }
+
+    .code-banner {
+      background: rgba(255,255,255,.15);
+      color: rgba(255,255,255,.9);
+      text-align: center; padding: 8px; font-size: 13px; cursor: pointer;
+      border-top: 1px solid rgba(255,255,255,.1);
+      transition: background .2s;
+    }
+    .code-banner:active { background: rgba(255,255,255,.25); }
+    .code-banner strong { letter-spacing: 3px; font-size: 15px; }
+
+    /* Tabs */
+    .tabs { display: flex; background: var(--primary); gap: 4px; padding: 0 12px; }
+    .tab {
+      flex: 1; padding: 12px 4px; border: none; background: transparent;
+      color: rgba(255,255,255,.65); font-size: 13px; font-weight: 600;
+      cursor: pointer; border-bottom: 3px solid transparent;
+      transition: all .2s; white-space: nowrap;
+    }
+    .tab.active { color: white; border-bottom-color: white; }
+
+    .tab-content { display: none; flex: 1; overflow-y: auto; padding: 16px; }
+    .tab-content.active { display: block; }
+
+    /* ── Members Tab ─────────────────────────────────────── */
+    .member-item {
+      background: var(--card); border-radius: var(--radius-sm);
+      padding: 14px 16px; margin-bottom: 10px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .avatar {
+      width: 42px; height: 42px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #8B5CF6);
+      color: white; font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; text-transform: uppercase;
+    }
+    .member-name { font-size: 16px; font-weight: 600; }
+    .you-badge {
+      background: var(--primary); color: white;
+      font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 50px; margin-left: 6px; vertical-align: middle;
+    }
+    .member-sub { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+    .add-member-card {
+      background: var(--card); border-radius: var(--radius); padding: 16px;
+      box-shadow: var(--shadow); margin-bottom: 16px;
+    }
+    .add-member-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--sub); }
+    .add-member-row { display: flex; gap: 8px; }
+    .add-member-row input { margin: 0; }
+    .add-member-row .btn { width: auto; margin: 0; padding: 14px 18px; font-size: 14px; }
+
+    /* ── Expenses Tab ────────────────────────────────────── */
+    .expense-item {
+      background: var(--card); border-radius: var(--radius-sm);
+      padding: 14px 16px; margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .expense-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .expense-desc { font-size: 16px; font-weight: 700; flex: 1; }
+    .expense-amount { font-size: 18px; font-weight: 800; color: var(--primary); white-space: nowrap; }
+    .expense-meta { font-size: 12px; color: var(--sub); margin-top: 6px; }
+    .expense-participants { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .chip {
+      background: #F0F2FF; color: var(--primary); font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 50px;
+    }
+    .delete-btn {
+      background: #fff0f0; color: var(--red); border: none;
+      padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
+    }
+    .delete-btn:active { background: #ffe0e0; }
+
+    .add-expense-btn {
+      position: fixed; bottom: 24px; right: 20px;
+      background: var(--primary); color: white;
+      border: none; border-radius: 50px; padding: 16px 22px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 24px rgba(108,99,255,.45);
+      z-index: 100; transition: all .2s;
+    }
+    .add-expense-btn:active { transform: scale(.95); }
+
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--sub);
+    }
+    .empty-state .emoji { font-size: 56px; margin-bottom: 12px; }
+    .empty-state p { font-size: 15px; }
+
+    /* ── Settlement Tab ──────────────────────────────────── */
+    .summary-banner {
+      background: linear-gradient(135deg, var(--primary), #8B5CF6);
+      color: white; border-radius: var(--radius); padding: 20px;
+      text-align: center; margin-bottom: 16px;
+    }
+    .summary-banner .total-label { font-size: 13px; opacity: .8; margin-bottom: 4px; }
+    .summary-banner .total-amount { font-size: 36px; font-weight: 900; }
+    .summary-banner .total-sub { font-size: 13px; opacity: .75; margin-top: 4px; }
+
+    .section-title {
+      font-size: 13px; font-weight: 700; color: var(--sub);
+      text-transform: uppercase; letter-spacing: .8px;
+      margin: 16px 0 10px;
+    }
+
+    .balance-item {
+      background: var(--card); border-radius: var(--radius-sm);
+      padding: 14px 16px; margin-bottom: 8px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .balance-right { margin-left: auto; text-align: right; }
+    .balance-net { font-size: 17px; font-weight: 800; }
+    .balance-net.pos { color: var(--green); }
+    .balance-net.neg { color: var(--red); }
+    .balance-net.zero { color: var(--sub); }
+    .balance-detail { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+    .settle-card {
+      background: var(--card); border-radius: var(--radius-sm);
+      padding: 16px; margin-bottom: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .settle-row { display: flex; align-items: center; gap: 8px; }
+    .settle-from { font-size: 15px; font-weight: 700; color: var(--red); }
+    .settle-arrow { font-size: 18px; color: var(--sub); }
+    .settle-to { font-size: 15px; font-weight: 700; color: var(--green); }
+    .settle-amount {
+      font-size: 20px; font-weight: 900; color: var(--primary);
+      margin-top: 6px;
+    }
+
+    .all-settled {
+      background: linear-gradient(135deg, #e8f5e9, #f1f8e9);
+      border-radius: var(--radius); padding: 28px; text-align: center;
+      border: 2px solid #a5d6a7;
+    }
+    .all-settled .emoji { font-size: 52px; margin-bottom: 10px; }
+    .all-settled p { font-size: 16px; font-weight: 700; color: #2e7d32; }
+
+    /* ── Modals ──────────────────────────────────────────── */
+    .overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.45); z-index: 1000;
+      align-items: flex-end; justify-content: center;
+    }
+    .overlay.open { display: flex; }
+
+    .modal {
+      background: var(--card); border-radius: 24px 24px 0 0;
+      padding: 24px 20px 36px; width: 100%;
+      max-height: 92dvh; overflow-y: auto;
+      animation: slideUp .25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(60px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .modal-handle {
+      width: 40px; height: 4px; background: #e0e0e0;
+      border-radius: 2px; margin: 0 auto 20px;
+    }
+    .modal h3 { font-size: 20px; font-weight: 800; margin-bottom: 16px; }
+    .modal .form-label { margin-top: 14px; }
+    .modal input, .modal select { margin-top: 0; }
+
+    /* Participants checkboxes */
+    .participants-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .participant-check {
+      display: flex; align-items: center; gap: 12px;
+      background: #fafafa; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px;
+      cursor: pointer; transition: all .15s;
+    }
+    .participant-check.selected { background: #F0F2FF; border-color: var(--primary); }
+    .check-circle {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .participant-check.selected .check-circle {
+      background: var(--primary); border-color: var(--primary); color: white; font-size: 13px;
+    }
+    .participant-check.selected .check-circle::after { content: "✓"; }
+    .participant-label { font-size: 15px; font-weight: 600; }
+
+    .select-all-btn {
+      width: 100%; padding: 10px; margin-top: 8px;
+      background: #F0F2FF; color: var(--primary); border: none;
+      border-radius: var(--radius-sm); font-size: 14px; font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Amount input with ₹ prefix */
+    .amount-wrap { position: relative; }
+    .amount-wrap .rupee {
+      position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+      font-size: 18px; font-weight: 700; color: var(--primary);
+    }
+    .amount-wrap input { padding-left: 32px; }
+
+    /* ── Loading spinner ─────────────────────────────────── */
+    .spinner {
+      border: 3px solid #f0f0f0; border-top-color: var(--primary);
+      border-radius: 50%; width: 24px; height: 24px;
+      animation: spin .7s linear infinite; margin: 40px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Spacer for FAB ──────────────────────────────────── */
+    .fab-spacer { height: 80px; }
+  </style>
+</head>
+<body>
+
+<!-- ── Toast ────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 1 — HOME
+═══════════════════════════════════════════════════════ -->
+<div id="screen-home" class="screen active">
+  <div class="hero">
+    <div class="hero-logo">✈️</div>
+    <h1>TripSplit</h1>
+    <p>Trip ka kharcha, asaan split</p>
+  </div>
+
+  <div class="home-body">
+    <!-- Create group -->
+    <div class="home-card" onclick="openCreateModal()">
+      <span class="home-card-icon">🚀</span>
+      <div class="home-card-text">
+        <h3>Naya Group Banao</h3>
+        <p>Trip start karo, friends ko invite karo</p>
+      </div>
+      <span class="chevron">›</span>
+    </div>
+
+    <div class="divider">— YA —</div>
+
+    <!-- Join group -->
+    <div class="join-card">
+      <label>Group code se join karo</label>
+      <input id="join-code-input" placeholder="Code daalo (e.g. ABC123)" maxlength="6"
+             oninput="this.value = this.value.toUpperCase()"
+             onkeydown="if(event.key==='Enter') handleJoin()" />
+      <button class="btn btn-primary" onclick="handleJoin()">Join Group →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 2 — NAME ENTRY
+═══════════════════════════════════════════════════════ -->
+<div id="screen-name" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('screen-home')">←</button>
+    <h2>Group Join Karo</h2>
+  </div>
+  <div class="screen-body">
+    <div class="info-card">
+      <div class="emoji">👥</div>
+      <h3 id="joining-group-name">—</h3>
+      <div class="code-pill" id="joining-group-code">——</div>
+    </div>
+
+    <div class="form-card">
+      <label class="form-label">Apna naam daalo</label>
+      <input id="member-name-input" placeholder="Tumhara naam" autocomplete="off"
+             onkeydown="if(event.key==='Enter') handleJoinGroup()" />
+      <button class="btn btn-primary" onclick="handleJoinGroup()">Group Join Karo 🎉</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SCREEN 3 — GROUP DASHBOARD
+═══════════════════════════════════════════════════════ -->
+<div id="screen-group" class="screen">
+  <div class="group-topbar">
+    <div class="group-topbar-row">
+      <button class="back-btn" onclick="showScreen('screen-home')">←</button>
+      <h2 id="header-group-name">Group</h2>
+      <button class="topbar-btn" onclick="shareGroup()">📤 Share</button>
+      <button class="topbar-btn" onclick="refreshAll()">🔄</button>
+    </div>
+    <div class="code-banner" onclick="copyCode()">
+      Code: <strong id="group-code-display">——</strong>&nbsp;&nbsp;· Tap to copy 📋
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('members', this)">👥 Members</button>
+      <button class="tab"        onclick="switchTab('expenses', this)">💰 Expenses</button>
+      <button class="tab"        onclick="switchTab('settlement', this)">✅ Settlement</button>
+    </div>
+  </div>
+
+  <!-- Tab: Members -->
+  <div id="tab-members" class="tab-content active">
+    <div class="add-member-card">
+      <h4>MEMBER ADD KARO</h4>
+      <div class="add-member-row">
+        <input id="new-member-input" placeholder="Naam daalo" autocomplete="off"
+               onkeydown="if(event.key==='Enter') handleAddMember()" />
+        <button class="btn btn-primary" onclick="handleAddMember()" style="width:auto;margin:0;padding:14px 18px">Add</button>
+      </div>
+    </div>
+    <div id="members-list"><div class="spinner"></div></div>
+    <div class="fab-spacer"></div>
+  </div>
+
+  <!-- Tab: Expenses -->
+  <div id="tab-expenses" class="tab-content">
+    <div id="expenses-list"><div class="spinner"></div></div>
+    <div class="fab-spacer"></div>
+    <button class="add-expense-btn" onclick="openExpenseModal()">+ Add Expense</button>
+  </div>
+
+  <!-- Tab: Settlement -->
+  <div id="tab-settlement" class="tab-content">
+    <div id="settlement-content"><div class="spinner"></div></div>
+    <div class="fab-spacer"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL — CREATE GROUP
+═══════════════════════════════════════════════════════ -->
+<div id="overlay-create" class="overlay" onclick="overlayClose(event,'overlay-create')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>🚀 Naya Group Banao</h3>
+
+    <label class="form-label">Trip ka naam</label>
+    <input id="new-group-name" placeholder="e.g. Goa Trip 2025" maxlength="60"
+           onkeydown="if(event.key==='Enter') handleCreateGroup()" />
+
+    <label class="form-label" style="margin-top:14px">Tumhara naam</label>
+    <input id="creator-name" placeholder="Apna naam" maxlength="30"
+           onkeydown="if(event.key==='Enter') handleCreateGroup()" />
+
+    <button class="btn btn-primary" onclick="handleCreateGroup()">Group Banao 🎉</button>
+    <button class="btn btn-outline" onclick="closeOverlay('overlay-create')">Cancel</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     MODAL — ADD EXPENSE
+═══════════════════════════════════════════════════════ -->
+<div id="overlay-expense" class="overlay" onclick="overlayClose(event,'overlay-expense')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>💰 Expense Add Karo</h3>
+
+    <label class="form-label">Kya tha?</label>
+    <input id="exp-desc" placeholder="e.g. Hotel, Petrol, Dinner" maxlength="100" />
+
+    <label class="form-label" style="margin-top:14px">Amount (₹)</label>
+    <div class="amount-wrap">
+      <span class="rupee">₹</span>
+      <input id="exp-amount" type="number" placeholder="0.00" min="0.01" step="0.01" />
+    </div>
+
+    <label class="form-label" style="margin-top:14px">Kisne pay kiya?</label>
+    <select id="exp-paid-by"></select>
+
+    <label class="form-label" style="margin-top:14px">Kiske beech split hoga?</label>
+    <button class="select-all-btn" onclick="toggleSelectAll()">☑️ Sabko Select Karo</button>
+    <div id="exp-participants" class="participants-grid" style="margin-top:8px"></div>
+
+    <button class="btn btn-primary" style="margin-top:16px" onclick="handleAddExpense()">Expense Save Karo ✓</button>
+    <button class="btn btn-outline" onclick="closeOverlay('overlay-expense')">Cancel</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+// ── State ─────────────────────────────────────────────────
+const S = {
+  group:    null,   // { id, name, code }
+  member:   null,   // { id, name }
+  members:  [],
+  expenses: [],
+  settlement: null,
+};
+
+// ── Persistence ───────────────────────────────────────────
+function saveLocal() {
+  if (S.group)  localStorage.setItem('ts_group',  JSON.stringify(S.group));
+  if (S.member) localStorage.setItem('ts_member', JSON.stringify(S.member));
+}
+function loadLocal() {
+  try {
+    const g = localStorage.getItem('ts_group');
+    const m = localStorage.getItem('ts_member');
+    if (g) S.group  = JSON.parse(g);
+    if (m) S.member = JSON.parse(m);
+  } catch(e) {}
+}
+function clearLocal() {
+  localStorage.removeItem('ts_group');
+  localStorage.removeItem('ts_member');
+}
+
+// ── API ───────────────────────────────────────────────────
+const API = {
+  async req(method, path, body) {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+    };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch('/api' + path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || 'Kuch gadbad ho gayi');
+    return data;
+  },
+  createGroup:  (name)        => API.req('POST', '/groups', { name }),
+  getGroup:     (code)        => API.req('GET',  `/groups/${code}`),
+  addMember:    (code, name)  => API.req('POST', `/groups/${code}/members`, { name }),
+  getMembers:   (code)        => API.req('GET',  `/groups/${code}/members`),
+  addExpense:   (code, body)  => API.req('POST', `/groups/${code}/expenses`, body),
+  getExpenses:  (code)        => API.req('GET',  `/groups/${code}/expenses`),
+  deleteExpense:(code, id)    => API.req('DELETE',`/groups/${code}/expenses/${id}`),
+  getSettlement:(code)        => API.req('GET',  `/groups/${code}/settlement`),
+};
+
+// ── Toast ─────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, dur=2400) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// ── Screens ───────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Overlays (modals) ─────────────────────────────────────
+function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
+function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
+function overlayClose(e, id) {
+  if (e.target === document.getElementById(id)) closeOverlay(id);
+}
+
+// ── Tabs ──────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+
+  if (name === 'expenses')   loadExpenses();
+  if (name === 'settlement') loadSettlement();
+  if (name === 'members')    loadMembers();
+}
+
+// ── HOME: Join ────────────────────────────────────────────
+async function handleJoin() {
+  const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+  if (!code) { toast('⚠️ Code daalo'); return; }
+
+  try {
+    const group = await API.getGroup(code);
+    S.group = group;
+
+    document.getElementById('joining-group-name').textContent = group.name;
+    document.getElementById('joining-group-code').textContent = group.code;
+    document.getElementById('member-name-input').value = '';
+
+    showScreen('screen-name');
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── HOME: Open create modal ───────────────────────────────
+function openCreateModal() {
+  document.getElementById('new-group-name').value = '';
+  document.getElementById('creator-name').value   = '';
+  openOverlay('overlay-create');
+  setTimeout(() => document.getElementById('new-group-name').focus(), 300);
+}
+
+// ── CREATE GROUP ──────────────────────────────────────────
+async function handleCreateGroup() {
+  const groupName = document.getElementById('new-group-name').value.trim();
+  const myName    = document.getElementById('creator-name').value.trim();
+
+  if (!groupName) { toast('⚠️ Trip ka naam daalo'); return; }
+  if (!myName)    { toast('⚠️ Apna naam daalo'); return; }
+
+  try {
+    const group  = await API.createGroup(groupName);
+    const member = await API.addMember(group.code, myName);
+
+    S.group  = group;
+    S.member = member;
+    saveLocal();
+    closeOverlay('overlay-create');
+    enterGroup();
+    toast('🎉 Group ban gaya! Code share karo');
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── JOIN GROUP (name screen) ──────────────────────────────
+async function handleJoinGroup() {
+  const name = document.getElementById('member-name-input').value.trim();
+  if (!name) { toast('⚠️ Apna naam daalo'); return; }
+
+  try {
+    const member = await API.addMember(S.group.code, name);
+    S.member = member;
+    saveLocal();
+    enterGroup();
+    toast('👋 Welcome, ' + member.name + '!');
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── ENTER GROUP SCREEN ────────────────────────────────────
+function enterGroup() {
+  document.getElementById('header-group-name').textContent = S.group.name;
+  document.getElementById('group-code-display').textContent = S.group.code;
+
+  // Reset to members tab
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelector('.tab').classList.add('active');
+  document.getElementById('tab-members').classList.add('active');
+
+  showScreen('screen-group');
+  loadMembers();
+}
+
+// ── SHARE / COPY ──────────────────────────────────────────
+function copyCode() {
+  const code = S.group?.code;
+  if (!code) return;
+  const text = `TripSplit group me join karo!\nGroup: ${S.group.name}\nCode: ${code}\nApp kholke code daalo: http://localhost:8000`;
+  navigator.clipboard?.writeText(text)
+    .then(() => toast('📋 Code copy ho gaya!'))
+    .catch(() => toast('Code: ' + code));
+}
+
+function shareGroup() {
+  const code = S.group?.code;
+  if (!code) return;
+  const text = `TripSplit group me join karo! 🎉\nGroup: ${S.group.name}\nCode: ${code}`;
+  if (navigator.share) {
+    navigator.share({ title: 'TripSplit', text }).catch(() => {});
+  } else {
+    copyCode();
+  }
+}
+
+// ── REFRESH ───────────────────────────────────────────────
+function refreshAll() {
+  const active = document.querySelector('.tab.active')?.textContent.trim();
+  if (active?.includes('Members'))    loadMembers();
+  if (active?.includes('Expenses'))   loadExpenses();
+  if (active?.includes('Settlement')) loadSettlement();
+  toast('🔄 Refresh ho gaya');
+}
+
+// ── MEMBERS ───────────────────────────────────────────────
+async function loadMembers() {
+  const el = document.getElementById('members-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    S.members = await API.getMembers(S.group.code);
+    renderMembers();
+  } catch(e) { el.innerHTML = `<p style="color:red;padding:16px">${e.message}</p>`; }
+}
+
+function renderMembers() {
+  const el = document.getElementById('members-list');
+  if (!S.members.length) {
+    el.innerHTML = `<div class="empty-state"><div class="emoji">👤</div><p>Abhi koi member nahi hai</p></div>`;
+    return;
+  }
+  el.innerHTML = S.members.map(m => {
+    const isYou = S.member?.id === m.id;
+    return `
+      <div class="member-item">
+        <div class="avatar">${m.name[0]}</div>
+        <div>
+          <div class="member-name">
+            ${esc(m.name)}
+            ${isYou ? '<span class="you-badge">YOU</span>' : ''}
+          </div>
+          <div class="member-sub">Group member</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function handleAddMember() {
+  const inp  = document.getElementById('new-member-input');
+  const name = inp.value.trim();
+  if (!name) { toast('⚠️ Naam daalo'); return; }
+
+  try {
+    const member = await API.addMember(S.group.code, name);
+    if (!S.members.find(m => m.id === member.id)) S.members.push(member);
+    renderMembers();
+    inp.value = '';
+    toast('✅ ' + member.name + ' add ho gaya!');
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── EXPENSES ──────────────────────────────────────────────
+async function loadExpenses() {
+  const el = document.getElementById('expenses-list');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    S.expenses = await API.getExpenses(S.group.code);
+    renderExpenses();
+  } catch(e) { el.innerHTML = `<p style="color:red;padding:16px">${e.message}</p>`; }
+}
+
+function renderExpenses() {
+  const el = document.getElementById('expenses-list');
+  if (!S.expenses.length) {
+    el.innerHTML = `<div class="empty-state"><div class="emoji">💸</div><p>Abhi koi expense nahi hai<br>+ Add Expense dabao</p></div>`;
+    return;
+  }
+
+  el.innerHTML = S.expenses.map(e => {
+    const d = new Date(e.created_at);
+    const dateStr = d.toLocaleDateString('hi-IN', { day:'numeric', month:'short' });
+    return `
+      <div class="expense-item">
+        <div class="expense-top">
+          <div class="expense-desc">${esc(e.description)}</div>
+          <div class="expense-amount">₹${fmt(e.amount)}</div>
+        </div>
+        <div class="expense-meta">
+          💳 <b>${esc(e.paid_by_name)}</b> ne pay kiya &nbsp;·&nbsp; ${dateStr}
+        </div>
+        <div class="expense-participants">
+          ${e.participant_names.map(n => `<span class="chip">${esc(n)}</span>`).join('')}
+        </div>
+        <button class="delete-btn" onclick="deleteExpense(${e.id})">🗑 Delete</button>
+      </div>`;
+  }).join('');
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Yeh expense delete karein?')) return;
+  try {
+    await API.deleteExpense(S.group.code, id);
+    S.expenses = S.expenses.filter(e => e.id !== id);
+    renderExpenses();
+    toast('🗑 Expense delete ho gaya');
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── EXPENSE MODAL ─────────────────────────────────────────
+function openExpenseModal() {
+  if (!S.members.length) {
+    toast('⚠️ Pehle members add karo');
+    return;
+  }
+
+  // Paid-by dropdown
+  const sel = document.getElementById('exp-paid-by');
+  sel.innerHTML = S.members.map(m =>
+    `<option value="${m.id}" ${m.id === S.member?.id ? 'selected' : ''}>${esc(m.name)}</option>`
+  ).join('');
+
+  // Participants checkboxes
+  const grid = document.getElementById('exp-participants');
+  grid.innerHTML = S.members.map(m => `
+    <div class="participant-check selected" data-id="${m.id}" onclick="toggleParticipant(this)">
+      <div class="check-circle"></div>
+      <span class="participant-label">${esc(m.name)}</span>
+    </div>`).join('');
+
+  // Clear inputs
+  document.getElementById('exp-desc').value   = '';
+  document.getElementById('exp-amount').value = '';
+
+  openOverlay('overlay-expense');
+  setTimeout(() => document.getElementById('exp-desc').focus(), 300);
+}
+
+function toggleParticipant(el) {
+  el.classList.toggle('selected');
+}
+
+function toggleSelectAll() {
+  const checks = document.querySelectorAll('#exp-participants .participant-check');
+  const allSelected = [...checks].every(c => c.classList.contains('selected'));
+  checks.forEach(c => allSelected ? c.classList.remove('selected') : c.classList.add('selected'));
+}
+
+async function handleAddExpense() {
+  const desc   = document.getElementById('exp-desc').value.trim();
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  const paidBy = parseInt(document.getElementById('exp-paid-by').value);
+  const selected = [...document.querySelectorAll('#exp-participants .participant-check.selected')]
+                    .map(el => parseInt(el.dataset.id));
+
+  if (!desc)              { toast('⚠️ Description daalo'); return; }
+  if (!amount || amount <= 0) { toast('⚠️ Amount sahi daalo'); return; }
+  if (!selected.length)   { toast('⚠️ Kam se kam ek participant select karo'); return; }
+
+  try {
+    const exp = await API.addExpense(S.group.code, {
+      description:     desc,
+      amount:          amount,
+      paid_by_id:      paidBy,
+      participant_ids: selected,
+    });
+    S.expenses.unshift(exp);
+    renderExpenses();
+    closeOverlay('overlay-expense');
+    toast('✅ Expense add ho gaya!');
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── SETTLEMENT ────────────────────────────────────────────
+async function loadSettlement() {
+  const el = document.getElementById('settlement-content');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    S.settlement = await API.getSettlement(S.group.code);
+    renderSettlement();
+  } catch(e) { el.innerHTML = `<p style="color:red;padding:16px">${e.message}</p>`; }
+}
+
+function renderSettlement() {
+  const el = document.getElementById('settlement-content');
+  const d  = S.settlement;
+  if (!d) return;
+
+  const perHead = d.member_totals.length
+    ? (d.total_spent / d.member_totals.length)
+    : 0;
+
+  // Summary banner
+  let html = `
+    <div class="summary-banner">
+      <div class="total-label">Total Kharcha</div>
+      <div class="total-amount">₹${fmt(d.total_spent)}</div>
+      <div class="total-sub">${d.member_totals.length} log · ₹${fmt(perHead)} per person</div>
+    </div>`;
+
+  // Member balance cards
+  html += `<div class="section-title">Har member ka hisaab</div>`;
+  html += d.member_totals.map(m => {
+    const cls = m.net > 0.005 ? 'pos' : m.net < -0.005 ? 'neg' : 'zero';
+    const label = m.net > 0.005
+      ? `₹${fmt(m.net)} milega`
+      : m.net < -0.005
+      ? `₹${fmt(Math.abs(m.net))} dena hai`
+      : 'Settled ✓';
+    return `
+      <div class="balance-item">
+        <div class="avatar">${m.name[0]}</div>
+        <div>
+          <div class="member-name">${esc(m.name)}</div>
+          <div class="balance-detail">Diya: ₹${fmt(m.paid)} · Hissa: ₹${fmt(m.owes)}</div>
+        </div>
+        <div class="balance-right">
+          <div class="balance-net ${cls}">${label}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // Settlements
+  html += `<div class="section-title" style="margin-top:20px">Kaise settle karein</div>`;
+  if (!d.settlements.length) {
+    html += `
+      <div class="all-settled">
+        <div class="emoji">🎉</div>
+        <p>Sab settled hai!<br>Koi payment nahi karni.</p>
+      </div>`;
+  } else {
+    html += d.settlements.map(s => `
+      <div class="settle-card">
+        <div class="settle-row">
+          <span class="settle-from">${esc(s.from)}</span>
+          <span class="settle-arrow">→</span>
+          <span class="settle-to">${esc(s.to)}</span>
+        </div>
+        <div class="settle-amount">₹${fmt(s.amount)}</div>
+      </div>`).join('');
+  }
+
+  el.innerHTML = html;
+}
+
+// ── Helpers ───────────────────────────────────────────────
+function fmt(n) {
+  return Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ── Init ──────────────────────────────────────────────────
+(function init() {
+  loadLocal();
+  if (S.group && S.member) {
+    // Restore last session
+    enterGroup();
+    toast('👋 Welcome back, ' + S.member.name + '!');
+  }
+})();
+</script>
+</body>
+</html>
