@@ -2,8 +2,11 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Local pe SQLite, Render pe PostgreSQL automatically use hoga
 db_url = os.environ.get("DATABASE_URL", "sqlite:///./tripsplit.db")
+
+# pg8000 driver use karo PostgreSQL ke liye
+if "postgresql" in db_url and "pg8000" not in db_url:
+    db_url = db_url.replace("postgresql://", "postgresql+pg8000://")
 
 engine = create_engine(
     db_url,
