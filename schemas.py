@@ -30,7 +30,7 @@ class ExpenseCreate(BaseModel):
     description:     str   = Field(..., min_length=1, max_length=200)
     amount:          float = Field(..., gt=0)
     paid_by_id:      int
-    participant_ids: List[int] = Field(..., min_length=1)
+    participant_ids: List[int]
     receipt_image:   Optional[str] = None
 
 class ExpenseUpdate(BaseModel):
