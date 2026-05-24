@@ -19,6 +19,11 @@ class GroupOut(BaseModel):
 class MemberCreate(BaseModel):
     name:     str = Field(..., min_length=1, max_length=50)
     password: Optional[str] = None
+    pin:      Optional[str] = Field(None, min_length=4, max_length=6)
+
+class MemberLogin(BaseModel):
+    name: str
+    pin:  str
 
 class MemberOut(BaseModel):
     id:       int
@@ -30,7 +35,7 @@ class ExpenseCreate(BaseModel):
     description:     str   = Field(..., min_length=1, max_length=200)
     amount:          float = Field(..., gt=0)
     paid_by_id:      int
-    participant_ids: List[int]
+    participant_ids: List[int] = Field(..., min_length=1)
     receipt_image:   Optional[str] = None
 
 class ExpenseUpdate(BaseModel):

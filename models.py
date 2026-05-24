@@ -26,6 +26,7 @@ class Member(Base):
     id         = Column(Integer, primary_key=True, index=True)
     group_id   = Column(Integer, ForeignKey("groups.id", ondelete="CASCADE"), nullable=False)
     name       = Column(String(50), nullable=False)
+    pin        = Column(String(10), nullable=True)
     is_admin   = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     group         = relationship("Group", back_populates="members")

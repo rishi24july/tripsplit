@@ -11,6 +11,21 @@ from database import engine, SessionLocal
 
 models.Base.metadata.create_all(bind=engine)
 
+# Auto migration - pin column add karo agar nahi hai
+def run_migrations():
+    try:
+        with engine.connect() as conn:
+            # members table mein pin column add karo
+            conn.execute(text("""
+                ALTER TABLE members ADD COLUMN IF NOT EXISTS pin VARCHAR(10)
+            """))
+            conn.commit()
+    except Exception as e:
+        pass  # Already exists ya koi aur issue
+
+from sqlalchemy import text
+run_migrations()
+
 app = FastAPI(title="TripSplit API", version="2.0.0")
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
@@ -66,11 +81,33 @@ def add_member(code: str, payload: schemas.MemberCreate, db: Session = Depends(g
         models.Member.name == payload.name.strip()
     ).first()
     if existing:
+        # Agar pehle se hai aur PIN set hai toh verify karo
+        if existing.pin and payload.pin != existing.pin:
+            raise HTTPException(status_code=403, detail="PIN galat hai")
         return _member_dict(existing)
 
+    if not payload.pin:
+        raise HTTPException(status_code=400, detail="PIN zaroori hai (4-6 digit)")
+
     is_first = db.query(models.Member).filter(models.Member.group_id == group.id).count() == 0
-    member = models.Member(group_id=group.id, name=payload.name.strip(), is_admin=is_first)
+    member = models.Member(
+        group_id=group.id, name=payload.name.strip(),
+        pin=payload.pin, is_admin=is_first
+    )
     db.add(member); db.commit(); db.refresh(member)
+    return _member_dict(member)
+
+@app.post("/api/groups/{code}/login")
+def member_login(code: str, payload: schemas.MemberLogin, db: Session = Depends(get_db)):
+    group = _get_group_or_404(code, db)
+    member = db.query(models.Member).filter(
+        models.Member.group_id == group.id,
+        models.Member.name == payload.name.strip()
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Yeh naam group mein nahi hai")
+    if member.pin and member.pin != payload.pin:
+        raise HTTPException(status_code=403, detail="PIN galat hai")
     return _member_dict(member)
 
 @app.get("/api/groups/{code}/members")

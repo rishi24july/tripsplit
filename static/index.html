@@ -318,10 +318,25 @@
       <h3 id="joining-group-name">—</h3>
       <div class="code-pill" id="joining-group-code">——</div>
     </div>
+
+    <!-- Existing members select karo -->
+    <div id="existing-members-card" class="form-card" style="display:none;margin-bottom:16px">
+      <label class="form-label">Tum pehle se ho? Select karo 👇</label>
+      <div id="existing-members-list" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
+      <div style="text-align:center;margin:12px 0;color:var(--sub);font-size:13px;font-weight:600">— YA —</div>
+    </div>
+
+    <!-- New member join -->
     <div class="form-card">
-      <label class="form-label">Apna naam daalo</label>
-      <input id="member-name-input" placeholder="Tumhara naam" autocomplete="off"
+      <label class="form-label">Naya naam se join karo</label>
+      <input id="member-name-input" placeholder="Tumhara naam" autocomplete="off"/>
+      <label class="form-label" style="margin-top:14px">Apna PIN set karo (4-6 digit)</label>
+      <input id="member-pin-input" type="password" inputmode="numeric"
+             placeholder="e.g. 1234" maxlength="6"
              onkeydown="if(event.key==='Enter')handleJoinGroup()"/>
+      <small style="color:var(--sub);font-size:12px;margin-top:4px;display:block">
+        ⚠️ Yeh PIN yaad rakhna — wapas login ke liye zaroori hoga
+      </small>
       <div id="pw-join-wrap" style="display:none;margin-top:14px">
         <label class="form-label">Group password</label>
         <div class="pw-wrap">
@@ -494,6 +509,7 @@ const API = {
   createGroup: (d)      => API.req('POST','/groups',d),
   getGroup:    (code)   => API.req('GET',`/groups/${code}`),
   addMember:   (code,d) => API.req('POST',`/groups/${code}/members`,d),
+  loginMember: (code,d) => API.req('POST',`/groups/${code}/login`,d),
   getMembers:  (code)   => API.req('GET',`/groups/${code}/members`),
   removeMember:(code,mid,adminId) =>
     API.req('DELETE',`/groups/${code}/members/${mid}?admin_id=${adminId}`),
@@ -564,7 +580,49 @@ async function handleJoin(){
     document.getElementById('member-name-input').value='';
     document.getElementById('join-pw-input').value='';
     document.getElementById('pw-join-wrap').style.display=group.has_password?'block':'none';
+
+    // Load existing members and show selection
+    try{
+      const members=await API.getMembers(group.code);
+      const card=document.getElementById('existing-members-card');
+      const list=document.getElementById('existing-members-list');
+      if(members.length>0){
+        card.style.display='block';
+        list.innerHTML=members.map(m=>`
+          <button onclick="selectExistingMember(${m.id},'${m.name.replace(/'/g,"\'")}')"
+            style="display:flex;align-items:center;gap:12px;padding:12px 14px;
+            background:var(--bg);border:2px solid var(--border);border-radius:10px;
+            cursor:pointer;width:100%;text-align:left;color:var(--text);font-size:15px;font-weight:600;transition:all .15s"
+            onmouseover="this.style.borderColor='var(--primary)'"
+            onmouseout="this.style.borderColor='var(--border)'">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#8B5CF6);
+              color:white;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">
+              ${m.name[0].toUpperCase()}
+            </div>
+            ${m.name}
+            ${m.is_admin?'<span style="background:#f59e0b;color:white;font-size:10px;padding:2px 7px;border-radius:50px;margin-left:auto">ADMIN</span>':''}
+          </button>`).join('');
+      } else {
+        card.style.display='none';
+      }
+    }catch(e){}
+
     showScreen('screen-name');
+  }catch(e){toast('❌ '+e.message)}
+}
+
+async function selectExistingMember(id, name){
+  // PIN maango
+  const pin=prompt(`${name} ka PIN daalo:`);
+  if(pin===null)return;
+  try{
+    const member=await API.loginMember(S.group.code,{name,pin});
+    S.member=member;
+    const members=await API.getMembers(S.group.code);
+    S.members=members;
+    saveLocal();
+    enterGroup();
+    toast('👋 Welcome back, '+member.name+'!');
   }catch(e){toast('❌ '+e.message)}
 }
 
@@ -596,10 +654,12 @@ async function handleCreateGroup(){
 
 async function handleJoinGroup(){
   const name=document.getElementById('member-name-input').value.trim();
+  const pin=document.getElementById('member-pin-input').value.trim();
   const pw=document.getElementById('join-pw-input').value.trim();
   if(!name){toast('⚠️ Apna naam daalo');return}
+  if(!pin||pin.length<4){toast('⚠️ PIN kam se kam 4 digit ka hona chahiye');return}
   try{
-    const member=await API.addMember(S.group.code,{name,password:pw||null});
+    const member=await API.addMember(S.group.code,{name,pin,password:pw||null});
     S.member=member; saveLocal();
     enterGroup(); toast('👋 Welcome, '+member.name+'!');
   }catch(e){toast('❌ '+e.message)}
