@@ -355,7 +355,7 @@
   </div>
 
   <div id="tab-members" class="tab-content active">
-    <div class="add-member-card">
+    <div class="add-member-card" id="add-member-card">
       <h4>MEMBER ADD KARO</h4>
       <div class="add-member-row">
         <input id="new-member-input" placeholder="Naam daalo" autocomplete="off"
@@ -644,12 +644,32 @@ function refreshAll(){
 async function loadMembers(){
   const el=document.getElementById('members-list');
   el.innerHTML='<div class="spinner"></div>';
-  try{S.members=await API.getMembers(S.group.code);renderMembers();}
+  try{
+    S.members=await API.getMembers(S.group.code);
+    // Bug 1 fix: check karo current member abhi bhi group mein hai ya nahi
+    if(S.member){
+      const stillMember=S.members.find(m=>m.id===S.member.id);
+      if(!stillMember){
+        localStorage.removeItem('ts_member');
+        S.member=null;
+        showScreen('screen-home');
+        toast('⚠️ Tumhe group se remove kar diya gaya');
+        return;
+      }
+      // Admin status update karo
+      S.member=S.members.find(m=>m.id===S.member.id);
+      saveLocal();
+    }
+    renderMembers();
+  }
   catch(e){el.innerHTML=`<p style="color:red;padding:16px">${e.message}</p>`}
 }
 
 function renderMembers(){
   const el=document.getElementById('members-list');
+  // Bug 2 fix: sirf admin ko add member box dikho
+  const addCard=document.getElementById('add-member-card');
+  if(addCard) addCard.style.display=S.member?.is_admin?'block':'none';
   if(!S.members.length){
     el.innerHTML=`<div class="empty-state"><div class="emoji">👤</div><p>Koi member nahi hai</p></div>`;
     return;
@@ -678,8 +698,13 @@ async function handleAddMember(){
   const inp=document.getElementById('new-member-input');
   const name=inp.value.trim();
   if(!name){toast('⚠️ Naam daalo');return}
+  let pw=null;
+  if(S.group.has_password){
+    pw=prompt('Group password daalo:');
+    if(pw===null)return;
+  }
   try{
-    const member=await API.addMember(S.group.code,{name});
+    const member=await API.addMember(S.group.code,{name,password:pw||null});
     if(!S.members.find(m=>m.id===member.id)) S.members.push(member);
     renderMembers(); inp.value='';
     toast('✅ '+member.name+' add ho gaya!');
