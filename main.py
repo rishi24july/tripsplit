@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from typing import List
 import random, string
 
@@ -15,15 +16,13 @@ models.Base.metadata.create_all(bind=engine)
 def run_migrations():
     try:
         with engine.connect() as conn:
-            # members table mein pin column add karo
             conn.execute(text("""
                 ALTER TABLE members ADD COLUMN IF NOT EXISTS pin VARCHAR(10)
             """))
             conn.commit()
-    except Exception as e:
-        pass  # Already exists ya koi aur issue
+    except Exception:
+        pass
 
-from sqlalchemy import text
 run_migrations()
 
 app = FastAPI(title="TripSplit API", version="2.0.0")
@@ -81,7 +80,6 @@ def add_member(code: str, payload: schemas.MemberCreate, db: Session = Depends(g
         models.Member.name == payload.name.strip()
     ).first()
     if existing:
-        # Agar pehle se hai aur PIN set hai toh verify karo
         if existing.pin and payload.pin != existing.pin:
             raise HTTPException(status_code=403, detail="PIN galat hai")
         return _member_dict(existing)
