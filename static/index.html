@@ -404,6 +404,9 @@
     <input id="new-group-name" placeholder="e.g. Goa Trip 2025" maxlength="60"/>
     <label class="form-label" style="margin-top:14px">Tumhara naam</label>
     <input id="creator-name" placeholder="Apna naam" maxlength="30"/>
+    <label class="form-label" style="margin-top:14px">Apna PIN set karo (4-6 digit)</label>
+    <input id="creator-pin" type="password" inputmode="numeric" placeholder="e.g. 1234" maxlength="6"/>
+    <small style="color:var(--sub);font-size:12px;margin-top:4px;display:block">⚠️ Yeh PIN yaad rakhna — wapas login ke liye zaroori hoga</small>
     <label class="form-label" style="margin-top:14px">Currency</label>
     <div class="currency-grid" id="currency-grid">
       <button class="cur-btn selected" data-cur="INR" onclick="selectCurrency(this)">₹ INR</button>
@@ -645,7 +648,9 @@ async function handleCreateGroup(){
   if(!myName){toast('⚠️ Apna naam daalo');return}
   try{
     const group=await API.createGroup({name,currency:S.selectedCurrency,password:pw||null});
-    const member=await API.addMember(group.code,{name:myName,password:pw||null});
+    const creatorPin=document.getElementById('creator-pin').value.trim();
+    if(!creatorPin||creatorPin.length<4){toast('⚠️ PIN kam se kam 4 digit ka hona chahiye');return}
+    const member=await API.addMember(group.code,{name:myName,pin:creatorPin,password:pw||null});
     S.group=group; S.member=member;
     saveLocal(); closeOverlay('overlay-create');
     enterGroup(); toast('🎉 Group ban gaya!');
